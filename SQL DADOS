@@ -1,0 +1,71 @@
+Imports OfficeOpenXml
+Imports System.Data.SQLite
+Imports System.IO
+
+Module CriarBancoPecas
+
+    Sub Main()
+
+        Dim caminhoExcel = "C:\Users\Joahan\Desktop\BancoPecas.xlsx" ' <-- Caminho do seu Excel
+        Dim caminhoDB = "C:\Users\Joahan\Desktop\DADOS\BancoPecas.db" ' <-- Onde será salvo
+
+        ' Apaga banco se existir
+        If File.Exists(caminhoDB) Then File.Delete(caminhoDB)
+
+        ' Cria novo banco SQLite
+        SQLiteConnection.CreateFile(caminhoDB)
+        Dim connStr = "Data Source=" & caminhoDB
+
+        Using con As New SQLiteConnection(connStr)
+            con.Open()
+
+            ' Criação da tabela
+            Dim sqlCreate = "
+                CREATE TABLE Pecas (
+                    Codigo TEXT PRIMARY KEY,
+                    Descricao TEXT,
+                    Unidade TEXT,
+                    Tipo TEXT,
+                    Familia TEXT,
+                    NCM TEXT
+                )"
+            Using cmd As New SQLiteCommand(sqlCreate, con)
+                cmd.ExecuteNonQuery()
+            End Using
+
+            ' Leitura do Excel
+            Using p As New ExcelPackage(New FileInfo(caminhoExcel))
+                Dim ws = p.Workbook.Worksheets(1)
+                Dim last = ws.Dimension.End.Row
+
+                For i As Integer = 2 To last ' pula cabeçalho
+                    Dim codigo = ws.Cells(i, 1).Text
+                    Dim desc = ws.Cells(i, 2).Text
+                    Dim unidade = ws.Cells(i, 3).Text
+                    Dim tipo = ws.Cells(i, 4).Text
+                    Dim familia = ws.Cells(i, 5).Text
+                    Dim ncm = ws.Cells(i, 6).Text
+
+                    If codigo <> "" Then
+                        Dim sqlInsert = "
+                            INSERT INTO Pecas (Codigo, Descricao, Unidade, Tipo, Familia, NCM)
+                            VALUES (@codigo, @desc, @unidade, @tipo, @familia, @ncm)"
+                        Using cmd As New SQLiteCommand(sqlInsert, con)
+                            cmd.Parameters.AddWithValue("@codigo", codigo)
+                            cmd.Parameters.AddWithValue("@desc", desc)
+                            cmd.Parameters.AddWithValue("@unidade", unidade)
+                            cmd.Parameters.AddWithValue("@tipo", tipo)
+                            cmd.Parameters.AddWithValue("@familia", familia)
+                            cmd.Parameters.AddWithValue("@ncm", ncm)
+                            cmd.ExecuteNonQuery()
+                        End Using
+                    End If
+                Next
+            End Using
+        End Using
+
+        MsgBox("BancoPecas.db gerado com sucesso!")
+
+    End Sub
+
+End Module
