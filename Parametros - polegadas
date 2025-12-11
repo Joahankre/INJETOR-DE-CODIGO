@@ -1,0 +1,44 @@
+Public Sub Main()
+    Call AtualizarPropriedadesPersonalizadas
+End Sub
+
+Public Sub AtualizarPropriedadesPersonalizadas()
+    
+    ' Obtém o documento de montagem ativo
+    Dim asmDoc As AssemblyDocument
+    Set asmDoc = ThisApplication.ActiveDocument
+    
+    ' Obtém todos os documentos referenciados pela montagem (todos os níveis)
+    Dim refDocs As DocumentsEnumerator
+    Set refDocs = asmDoc.AllReferencedDocuments
+    
+    ' Percorre todos os documentos referenciados
+    Dim doc As Document
+    For Each doc In refDocs
+        
+        ' Verifica se é um arquivo de peça
+        If doc.DocumentType = kPartDocumentObject Then
+            
+            ' Acessa os parâmetros da peça
+            Dim params As Parameters
+            Set params = doc.ComponentDefinition.Parameters
+            
+            On Error Resume Next
+            Dim param As Parameter
+            Set param = params.Item("G_L")     ' procura o parâmetro "G_L"
+            
+            If Err.Number = 0 Then             ' se o parâmetro existe...
+                
+                ' Edita o formato da propriedade personalizada
+                Dim propFormat As CustomPropertyFormat
+                Set propFormat = param.CustomPropertyFormat
+                
+                propFormat.Precision = CustomPropertyPrecisionEnum.kEighthsFractionalLengthPrecision
+                propFormat.Units = "in"
+                propFormat.PropertyType = CustomPropertyTypeEnum.kTextPropertyType
+            End If
+            
+            On Error GoTo 0
+        End If
+    Next
+End Sub
