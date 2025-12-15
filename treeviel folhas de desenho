@@ -1,0 +1,71 @@
+Sub Main()
+    If Not TypeOf ThisDoc.Document Is DrawingDocument Then Exit Sub
+    Dim dwgDoc As DrawingDocument = ThisDoc.Document
+
+    ' Dicionário: chave = nome da folha, valor = HashSet de prefixos
+    Dim folhaPrefixos As New Dictionary(Of String, HashSet(Of String))
+
+    For Each dwgSheet As Sheet In dwgDoc.Sheets
+        Dim prefixos As New HashSet(Of String)
+
+        For Each view As DrawingView In dwgSheet.DrawingViews
+            Try
+                Dim tempDoc As Document = View.ReferencedDocumentDescriptor.ReferencedDocument
+                If tempDoc Is Nothing Then Continue For
+                If tempDoc.DocumentType <> DocumentTypeEnum.kPartDocumentObject And _
+                   tempDoc.DocumentType <> DocumentTypeEnum.kAssemblyDocumentObject Then Continue For
+
+                ' Obtém categoria via iProperties
+                Dim docFName As String = System.IO.Path.GetFileName(tempDoc.FullFileName)
+                Dim categoryRaw As String = ""
+                Try
+                    categoryRaw = iProperties.Value(docFName, "Summary", "Category")
+                Catch
+                    categoryRaw = ""
+                End Try
+
+                If categoryRaw = "" Then categoryRaw = "N-A"
+
+                ' Divide múltiplas categorias pelo ";"
+                Dim categoriasSeparadas() As String = categoryRaw.Split(";"c)
+
+                For Each catRaw As String In categoriasSeparadas
+                    Dim catParts() As String = catRaw.Split("-"c)
+                    Dim prefixo As String = Trim(catParts(0))
+                    If prefixo <> "" Then prefixos.Add(prefixo)
+                Next
+
+            Catch
+                ' Ignora erros
+            End Try
+        Next
+
+        folhaPrefixos(dwgSheet.Name) = prefixos
+    Next
+
+    ' Mostra o formulário com TreeView
+    ShowTreeViewForm(folhaPrefixos)
+End Sub
+Sub ShowTreeViewForm(folhaPrefixos As Dictionary(Of String, HashSet(Of String)))
+    Dim form As New System.Windows.Forms.Form With {
+        .Text = "Prefixos por Folha",
+        .Width = 600,
+        .Height = 800
+    }
+
+    Dim tree As New System.Windows.Forms.TreeView With {
+        .Dock = System.Windows.Forms.DockStyle.Fill
+    }
+
+    ' Adiciona cada folha como nó principal e seus prefixos como filhos
+    For Each kvp In folhaPrefixos
+        Dim folhaNode As New System.Windows.Forms.TreeNode(kvp.Key)
+        For Each pre As String In kvp.Value.OrderBy(Function(x) Val(x))
+            folhaNode.Nodes.Add(pre)
+        Next
+        tree.Nodes.Add(folhaNode)
+    Next
+
+    form.Controls.Add(tree)
+    form.ShowDialog()
+End Sub
