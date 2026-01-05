@@ -1,0 +1,52 @@
+' Função principal: é o ponto de entrada do código
+Public Sub Main()
+
+    ' Documento da montagem atual
+    Dim doc As AssemblyDocument = ThisDoc.Document
+
+    ' Inicia a leitura das ocorrências
+    ListOccurences(String.Empty, doc.ComponentDefinition.Occurrences)
+
+End Sub
+
+
+' Esta função percorre os componentes da montagem
+Public Sub ListOccurences(parentName As String, occs As ComponentOccurrences)
+
+    ' Para cada componente encontrado
+    For Each occ As ComponentOccurrence In occs
+
+        ' Variável que vai guardar o InternalName (se for peça)
+        Dim internalName As String = ""
+
+        ' Verifica se o componente é uma PEÇA (.ipt)
+        If TypeOf occ.Definition.Document Is PartDocument Then
+            internalName = occ.Definition.Document.InternalName
+        End If
+
+
+        ' Monta o texto que será mostrado no log
+        Dim texto As String
+
+        If String.IsNullOrEmpty(parentName) Then
+            texto = occ.Name
+        Else
+            texto = parentName & "\" & occ.Name
+        End If
+
+        ' Se existir InternalName, adiciona ao texto
+        If internalName <> "" Then
+            texto &= " | InternalName: " & internalName
+        End If
+
+        ' Escreve no log
+        Logger.Info(texto)
+
+
+        ' Se for um subconjunto, entra nele
+        If TypeOf occ.Definition Is AssemblyComponentDefinition Then
+            ListOccurences(occ.Name, occ.Definition.Occurrences)
+        End If
+
+    Next
+End Sub
